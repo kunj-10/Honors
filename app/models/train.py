@@ -1,8 +1,8 @@
 import torch
 from torch.utils.data import DataLoader
-from models.cnn_model import ObstacleAvoidanceCNN
-from utils.dataset import SteeringDataset
-from utils.transforms import get_transforms
+from app.models.models.cnn_model import ObstacleAvoidanceCNN
+from app.models.utils.dataset import SteeringDataset
+from app.models.utils.transforms import get_transforms
 from torch.optim import Adam
 import torch.nn as nn
 

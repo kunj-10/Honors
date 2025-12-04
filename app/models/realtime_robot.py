@@ -1,13 +1,30 @@
+import os
+from pathlib import Path
+import torch
+
+# --- debug info (useful when running inside Webots) ---
+print("evaluate.py running from CWD:", os.getcwd())
+
+# Compute project root relative to this file:
+# file: .../app/models/evaluate.py
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # parents[0]=models, [1]=app, [2]=project root
+MODEL_PATH = PROJECT_ROOT / "app" / "robot_model.pth"
+
+
+
 import cv2
 import torch
-from models.cnn_model import ObstacleAvoidanceCNN
-from utils.transforms import get_transforms
-from utils.controller import SteeringController
+from app.models.models.cnn_model import ObstacleAvoidanceCNN
+from app.models.utils.transforms import get_transforms
+from app.models.utils.controller import SteeringController
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = ObstacleAvoidanceCNN().to(device)
-model.load_state_dict(torch.load("robot_model.pth", map_location=device))
-model.eval()
+try:
+    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model.eval()
+except Exception as e:
+    pass
 
 transform = get_transforms()
 controller = SteeringController()

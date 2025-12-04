@@ -1,6 +1,20 @@
+import sys
+from pathlib import Path
+
+# compute project root: .../Honors (adjust the number if your layout differs)
+# file: .../app/controllers/obstacle_controllers/obstacle_controllers.py
+PROJECT_ROOT = str(Path(__file__).resolve().parents[3])
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+print("Hello1")
 import math
 
 from controller import Supervisor
+from app.models.evaluate import predict
+
+print("Hello")
 
 # --- Constants ---
 TIME_STEP = 32
@@ -14,6 +28,7 @@ TURN_MULTIPLIER = 3
 AVOIDANCE_TRIGGER_THRESHOLD = 0.25
 DECREASE_FACTOR = 0.9
 BACK_SLOWDOWN = 0.9
+RUN_ANGLE=False
 
 # Goal Parameters
 DISTANCE_TOLERANCE = 0.5
@@ -39,8 +54,8 @@ def main():
     robot = Supervisor()
 
     # 2. Get Devices
-    lidar = robot.getDevice("Sick LMS 291")
-    lidar.enable(TIME_STEP)
+    cmr = robot.getDevice("Sick LMS 291")
+    cmr.enable(TIME_STEP)
 
     gps = robot.getDevice("gps")
     gps.enable(TIME_STEP)
@@ -69,20 +84,23 @@ def main():
     goal_field = goal_node.getField("translation")
 
     # 4. Pre-compute Braitenberg Weights (From your code)
-    lms_width = lidar.getHorizontalResolution()
+    lms_width = cmr.getHorizontalResolution()
     half_width = lms_width // 2
-    max_range = lidar.getMaxRange()
+    max_range = cmr.getMaxRange()
     # Use a fixed threshold for indoor walls (e.g., 2.0 meters)
     # instead of max_range/20 which might be too short/long
     range_threshold = 2.0
 
     braitenberg = [gaussian(i, half_width, lms_width / 5) for i in range(lms_width)]
 
+    if RUN_ANGLE:
+        angle = [predict(camera.getImage())]
+
     print("Controller started: Priority Avoidance Mode")
 
     while robot.step(TIME_STEP) != -1:
         # --- SENSORS ---
-        lidar_values = lidar.getRangeImage()
+        cmr_values = cmr.getRangeImage()
         current_pos = gps.getValues()
         rpy = imu.getRollPitchYaw()
         current_yaw = rpy[2]  # Adjust index if using ENU vs NED
@@ -93,14 +111,14 @@ def main():
         right_obstacle = 0.0
 
         for i in range(half_width):
-            # Left side (check indices based on your lidar mounting)
-            if lidar_values[i] < range_threshold:
-                left_obstacle += braitenberg[i] * (1.0 - lidar_values[i] / max_range)
+            # Left side (check indices based on your cmr mounting)
+            if cmr_values[i] < range_threshold:
+                left_obstacle += braitenberg[i] * (1.0 - cmr_values[i] / max_range)
 
             # Right side
             j = lms_width - i - 1
-            if lidar_values[j] < range_threshold:
-                right_obstacle += braitenberg[i] * (1.0 - lidar_values[j] / max_range)
+            if cmr_values[j] < range_threshold:
+                right_obstacle += braitenberg[i] * (1.0 - cmr_values[j] / max_range)
 
         obstacle_score = left_obstacle + right_obstacle
 
